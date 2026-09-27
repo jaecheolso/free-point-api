@@ -21,7 +21,7 @@ erDiagram
 
     point_transaction {
         bigint id PK
-        varchar point_key UK "명세의 pointKey"
+        varchar point_key UK "명세의 pointKey (UUID v7)"
         bigint user_id FK
         varchar type "EARN / EARN_CANCEL / USE / USE_CANCEL"
         bigint amount "> 0"
