@@ -61,19 +61,21 @@ public class PointEarnService {
 
     public EarnCancelResult cancelEarn(EarnCancelCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
-        PointTransaction earn = transactionRepository.findByPointKey(command.pointKey())
+        Long userId = transactionRepository.findUserIdByPointKey(command.pointKey())
                 .orElseThrow(() -> new PointException(ErrorCode.TRANSACTION_NOT_FOUND));
+        lockAccount(userId);
+
+        // 거래와 Lot 은 락 획득 후 조회해 다른 트랜잭션의 변경이 반영된 최신 상태로 판정한다.
+        PointTransaction earn = transactionRepository.findByPointKey(command.pointKey()).orElseThrow();
         if (!earn.isType(TransactionType.EARN)) {
             throw new PointException(ErrorCode.NOT_EARN_TRANSACTION);
         }
-        lockAccount(earn.getUserId());
 
         Optional<PointTransaction> duplicated = transactionRepository.findByRequestId(command.requestId());
         if (duplicated.isPresent()) {
             return replayEarnCancel(duplicated.get(), earn);
         }
 
-        // Lot 은 락 획득 후 처음 조회하므로 최신 상태다. 취소 가능 여부는 Lot 기준으로 판정한다.
         PointLot lot = lotRepository.findByTransactionId(earn.getId())
                 .orElseThrow(() -> new IllegalStateException("적립 거래에 Lot 이 없습니다. transactionId=" + earn.getId()));
         lot.cancel(now);

@@ -71,6 +71,30 @@ public class PointTransaction {
                 requestId, grantedBy, memo, now);
     }
 
+    /**
+     * 사용취소 시 원 Lot 이 만료되어 발생하는 신규 적립. 시스템 생성이므로 requestId 가 없다.
+     */
+    public static PointTransaction reissue(Long userId, long amount, LocalDateTime now) {
+        return new PointTransaction(userId, TransactionType.EARN, amount, null, null,
+                null, null, "사용취소 재적립", now);
+    }
+
+    public static PointTransaction use(Long userId, long amount, String orderNo, String requestId,
+                                       String memo, LocalDateTime now) {
+        return new PointTransaction(userId, TransactionType.USE, amount, orderNo, null,
+                requestId, null, memo, now);
+    }
+
+    public static PointTransaction useCancel(PointTransaction use, long amount, String requestId,
+                                             String memo, LocalDateTime now) {
+        return new PointTransaction(use.userId, TransactionType.USE_CANCEL, amount, use.orderNo, use.id,
+                requestId, null, memo, now);
+    }
+
+    public long cancelableAmount() {
+        return amount - canceledAmount;
+    }
+
     public static PointTransaction earnCancel(PointTransaction earn, String requestId,
                                               String memo, LocalDateTime now) {
         return new PointTransaction(earn.userId, TransactionType.EARN_CANCEL, earn.amount, null, earn.id,

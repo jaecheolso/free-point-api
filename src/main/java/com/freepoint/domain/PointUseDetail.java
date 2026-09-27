@@ -37,4 +37,31 @@ public class PointUseDetail {
     private int seq;
 
     private LocalDateTime createdAt;
+
+    private PointUseDetail(Long useTransactionId, Long lotId, String orderNo, long amount, int seq,
+                           LocalDateTime now) {
+        this.useTransactionId = useTransactionId;
+        this.lotId = lotId;
+        this.orderNo = orderNo;
+        this.amount = amount;
+        this.canceledAmount = 0;
+        this.seq = seq;
+        this.createdAt = now;
+    }
+
+    public static PointUseDetail of(PointTransaction use, PointLot lot, long amount, int seq, LocalDateTime now) {
+        return new PointUseDetail(use.getId(), lot.getId(), use.getOrderNo(), amount, seq, now);
+    }
+
+    public long cancelableAmount() {
+        return amount - canceledAmount;
+    }
+
+    public void cancel(long amount) {
+        if (amount <= 0 || amount > cancelableAmount()) {
+            throw new IllegalArgumentException(
+                    "사용취소 금액이 올바르지 않습니다. useDetailId=" + id + ", amount=" + amount);
+        }
+        this.canceledAmount += amount;
+    }
 }

@@ -74,6 +74,36 @@ public class PointLot {
     }
 
     /**
+     * 사용취소 재적립 Lot. 사용 우선순위 판정 축(source)은 원 Lot 에서 승계한다.
+     */
+    public static PointLot reissue(PointTransaction reissue, PointLot origin, LocalDateTime expiresAt,
+                                   LocalDateTime now) {
+        return new PointLot(reissue.getId(), reissue.getUserId(), reissue.getAmount(), origin.source,
+                LotOriginType.USE_CANCEL_REISSUE, expiresAt, now);
+    }
+
+    public void deduct(long amount, LocalDateTime now) {
+        if (status != LotStatus.ACTIVE || isExpired(now) || amount <= 0 || amount > remainingAmount) {
+            throw new IllegalStateException(
+                    "차감할 수 없는 Lot 입니다. lotId=" + id + ", remaining=" + remainingAmount + ", amount=" + amount);
+        }
+        this.remainingAmount -= amount;
+        this.updatedAt = now;
+    }
+
+    /**
+     * 사용취소로 원 Lot 잔액을 되돌린다. 만료되지 않은 Lot 에만 호출한다.
+     */
+    public void restore(long amount, LocalDateTime now) {
+        if (status != LotStatus.ACTIVE || isExpired(now) || amount <= 0 || remainingAmount + amount > originalAmount) {
+            throw new IllegalStateException(
+                    "복원할 수 없는 Lot 입니다. lotId=" + id + ", remaining=" + remainingAmount + ", amount=" + amount);
+        }
+        this.remainingAmount += amount;
+        this.updatedAt = now;
+    }
+
+    /**
      * 만료 시각이 되는 순간부터 만료로 본다.
      */
     public boolean isExpired(LocalDateTime now) {

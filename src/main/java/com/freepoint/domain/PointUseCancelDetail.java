@@ -38,4 +38,25 @@ public class PointUseCancelDetail {
     private Long reissuedLotId;
 
     private LocalDateTime createdAt;
+
+    private PointUseCancelDetail(Long cancelTransactionId, Long useDetailId, long amount,
+                                 RestoreType restoreType, Long reissuedLotId, LocalDateTime now) {
+        this.cancelTransactionId = cancelTransactionId;
+        this.useDetailId = useDetailId;
+        this.amount = amount;
+        this.restoreType = restoreType;
+        this.reissuedLotId = reissuedLotId;
+        this.createdAt = now;
+    }
+
+    public static PointUseCancelDetail restored(PointTransaction cancel, PointUseDetail useDetail, long amount,
+                                                LocalDateTime now) {
+        return new PointUseCancelDetail(cancel.getId(), useDetail.getId(), amount, RestoreType.RESTORED, null, now);
+    }
+
+    public static PointUseCancelDetail reissued(PointTransaction cancel, PointUseDetail useDetail, long amount,
+                                                PointLot reissuedLot, LocalDateTime now) {
+        return new PointUseCancelDetail(cancel.getId(), useDetail.getId(), amount, RestoreType.REISSUED,
+                reissuedLot.getId(), now);
+    }
 }
