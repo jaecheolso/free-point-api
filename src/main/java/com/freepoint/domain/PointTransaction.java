@@ -48,4 +48,47 @@ public class PointTransaction {
     private String memo;
 
     private LocalDateTime createdAt;
+
+    private PointTransaction(Long userId, TransactionType type, long amount, String orderNo,
+                             Long relatedTransactionId, String requestId, String grantedBy,
+                             String memo, LocalDateTime now) {
+        this.pointKey = PointKeyGenerator.generate();
+        this.userId = userId;
+        this.type = type;
+        this.amount = amount;
+        this.canceledAmount = 0;
+        this.orderNo = orderNo;
+        this.relatedTransactionId = relatedTransactionId;
+        this.requestId = requestId;
+        this.grantedBy = grantedBy;
+        this.memo = memo;
+        this.createdAt = now;
+    }
+
+    public static PointTransaction earn(Long userId, long amount, String requestId,
+                                        String grantedBy, String memo, LocalDateTime now) {
+        return new PointTransaction(userId, TransactionType.EARN, amount, null, null,
+                requestId, grantedBy, memo, now);
+    }
+
+    public static PointTransaction earnCancel(PointTransaction earn, String requestId,
+                                              String memo, LocalDateTime now) {
+        return new PointTransaction(earn.userId, TransactionType.EARN_CANCEL, earn.amount, null, earn.id,
+                requestId, null, memo, now);
+    }
+
+    /**
+     * 이 거래 금액 중 amount 만큼이 취소되었음을 기록한다.
+     */
+    public void cancel(long amount) {
+        if (amount <= 0 || canceledAmount + amount > this.amount) {
+            throw new IllegalArgumentException(
+                    "취소 금액이 올바르지 않습니다. amount=" + amount + ", canceled=" + canceledAmount);
+        }
+        this.canceledAmount += amount;
+    }
+
+    public boolean isType(TransactionType type) {
+        return this.type == type;
+    }
 }
