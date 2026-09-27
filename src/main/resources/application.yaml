@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: free-point-api
+
+  datasource:
+    # MODE=MySQL          : 운영 가정 환경(Aurora MySQL)과 DDL/함수 의미를 맞춘다.
+    # DATABASE_TO_LOWER   : 식별자를 소문자로 고정해 MySQL 및 Hibernate 명명전략과 일치시킨다.
+    # DB_CLOSE_DELAY=-1   : 커넥션이 모두 닫혀도 JVM 생존 동안 인메모리 DB를 유지한다.
+    # LOCK_TIMEOUT=10000  : H2 기본 락 대기는 짧아서, 동시성 테스트에서 같은
+    #                       point_account 행을 다투면 대기 만료로 실패한다.
+    url: jdbc:h2:mem:point;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      pool-name: point-pool
+      maximum-pool-size: 20
+
+  sql:
+    init:
+      # schema.sql 을 스키마의 단일 출처로 둔다. (ddl-auto: none 과 짝)
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.freepoint: DEBUG

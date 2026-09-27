@@ -1,0 +1,86 @@
+---
+title: 무료 포인트 시스템 ERD (점선 = 논리 FK, 물리 FK 없음)
+---
+erDiagram
+    point_account ||..o{ point_transaction : "user_id"
+    point_account ||..o{ point_lot : "user_id"
+    point_account |o..o{ point_policy : "user_id (USER 정책)"
+    point_transaction |o..o{ point_transaction : "related_transaction_id (취소 -> 원거래)"
+    point_transaction ||..o| point_lot : "transaction_id (EARN -> Lot)"
+    point_transaction ||..o{ point_use_detail : "use_transaction_id (USE)"
+    point_lot ||..o{ point_use_detail : "lot_id"
+    point_transaction ||..o{ point_use_cancel_detail : "cancel_transaction_id (USE_CANCEL)"
+    point_use_detail ||..o{ point_use_cancel_detail : "use_detail_id"
+    point_lot |o..o| point_use_cancel_detail : "reissued_lot_id (만료 재적립)"
+
+    point_account {
+        bigint user_id PK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    point_transaction {
+        bigint id PK
+        varchar point_key UK "명세의 pointKey"
+        bigint user_id FK
+        varchar type "EARN / EARN_CANCEL / USE / USE_CANCEL"
+        bigint amount "> 0"
+        bigint canceled_amount "0 ~ amount"
+        varchar order_no "USE 시 주문번호"
+        bigint related_transaction_id FK
+        varchar request_id UK "멱등 키, 재적립은 NULL"
+        varchar granted_by "수기지급 관리자"
+        varchar memo
+        timestamp created_at
+    }
+
+    point_lot {
+        bigint id PK
+        bigint transaction_id FK, UK
+        bigint user_id FK
+        bigint original_amount "> 0"
+        bigint remaining_amount "0 ~ original"
+        varchar source "수기지급 여부, 재적립 시 승계"
+        smallint use_priority "수기지급 우선"
+        varchar origin_type "일반 적립 / 사용취소 재적립"
+        timestamp expires_at "만료 판정 기준"
+        varchar status "ACTIVE / CANCELED"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    point_use_detail {
+        bigint id PK
+        bigint use_transaction_id FK
+        bigint lot_id FK
+        varchar order_no
+        bigint amount "> 0"
+        bigint canceled_amount "0 ~ amount"
+        int seq "사용 우선순위 순번"
+        timestamp created_at
+    }
+
+    point_use_cancel_detail {
+        bigint id PK
+        bigint cancel_transaction_id FK
+        bigint use_detail_id FK
+        bigint amount "> 0"
+        varchar restore_type "원 Lot 복원 / 신규 재적립"
+        bigint reissued_lot_id FK "재적립인 경우만"
+        timestamp created_at
+    }
+
+    point_policy {
+        bigint id PK
+        varchar scope "GLOBAL / USER"
+        bigint user_id FK "USER 정책인 경우"
+        bigint min_earn_amount
+        bigint max_earn_amount
+        bigint max_hold_amount
+        varchar min_expire_period "P1D"
+        varchar max_expire_period "P5Y (미만)"
+        varchar default_expire_period "P365D"
+        timestamp effective_from
+        timestamp effective_to
+        timestamp created_at
+    }
