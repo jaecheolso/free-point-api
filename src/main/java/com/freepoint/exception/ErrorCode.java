@@ -12,6 +12,7 @@ public enum ErrorCode {
     ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "포인트 계정이 존재하지 않습니다."),
     TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "포인트 거래가 존재하지 않습니다."),
 
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     INVALID_EARN_AMOUNT(HttpStatus.BAD_REQUEST, "1회 적립 가능 금액 범위를 벗어났습니다."),
     INVALID_EXPIRES_AT(HttpStatus.BAD_REQUEST, "만료일이 허용 범위를 벗어났습니다."),
     GRANTED_BY_REQUIRED(HttpStatus.BAD_REQUEST, "수기지급은 지급자가 필요합니다."),
@@ -27,7 +28,8 @@ public enum ErrorCode {
     ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 적립입니다."),
     EXPIRED_LOT(HttpStatus.CONFLICT, "만료된 적립은 취소할 수 없습니다."),
     PARTIALLY_USED(HttpStatus.CONFLICT, "일부 사용된 적립은 취소할 수 없습니다."),
-    DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 다른 요청에 사용된 requestId 입니다.");
+    DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 다른 요청에 사용된 requestId 입니다."),
+    DATA_CONFLICT(HttpStatus.CONFLICT, "다른 요청과 충돌했습니다. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String message;
