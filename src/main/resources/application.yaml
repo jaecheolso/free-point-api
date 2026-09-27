@@ -18,14 +18,15 @@ spring:
 
   sql:
     init:
-      # schema.sql 을 스키마의 단일 출처로 둔다. (ddl-auto: none 과 짝)
+      # schema.sql 을 스키마의 단일 출처로 둔다. (ddl-auto: validate 와 짝)
       mode: always
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
 
   jpa:
     hibernate:
-      ddl-auto: none
+      # 기동 시 엔티티 매핑이 schema.sql 로 만든 테이블과 일치하는지 검증한다.
+      ddl-auto: validate
     open-in-view: false
     show-sql: true
     properties:
