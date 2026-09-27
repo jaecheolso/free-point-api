@@ -81,14 +81,12 @@ public class PointLot {
     }
 
     /**
-     * 적립취소. 적립 금액 전체가 남아 있는 유효한 일반 적립만 취소할 수 있다.
+     * 적립취소. 적립 금액 전체가 남아 있는 유효한 적립만 취소할 수 있다.
+     * 사용취소 재적립 Lot 도 명세상 "신규적립"이므로 같은 규칙을 적용한다.
      */
     public void cancel(LocalDateTime now) {
         if (status == LotStatus.CANCELED) {
             throw new PointException(ErrorCode.ALREADY_CANCELED);
-        }
-        if (originType == LotOriginType.USE_CANCEL_REISSUE) {
-            throw new PointException(ErrorCode.REISSUED_LOT_NOT_CANCELABLE);
         }
         if (isExpired(now)) {
             throw new PointException(ErrorCode.EXPIRED_LOT);

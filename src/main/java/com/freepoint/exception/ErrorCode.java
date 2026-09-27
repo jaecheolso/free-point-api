@@ -21,7 +21,6 @@ public enum ErrorCode {
     ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 적립입니다."),
     EXPIRED_LOT(HttpStatus.CONFLICT, "만료된 적립은 취소할 수 없습니다."),
     PARTIALLY_USED(HttpStatus.CONFLICT, "일부 사용된 적립은 취소할 수 없습니다."),
-    REISSUED_LOT_NOT_CANCELABLE(HttpStatus.CONFLICT, "사용취소로 재적립된 포인트는 적립취소할 수 없습니다."),
     DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 다른 요청에 사용된 requestId 입니다.");
 
     private final HttpStatus status;
