@@ -1,0 +1,169 @@
+<!doctype html>
+<!--
+  AWS 아키텍처 다이어그램 원본. architecture.png 재생성 (src/main/resources/architecture 에서 실행):
+      NODE_PATH=/tmp/erd-tools/node_modules node ../erd/erd-render.js architecture.html architecture.png
+  puppeteer 설치 방법은 ../erd/erd-build.py 머리 주석 참고.
+  아이콘: AWS Architecture Icons (2026-07-31 릴리스) https://aws.amazon.com/architecture/icons/
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --ink: #1f2933; --muted: #6b7280; --line: #4b5563; }
+  body { margin: 0; background: #fff; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; color: var(--ink); }
+  #canvas { position: relative; width: 1500px; height: 1150px; background: #fff; }
+  svg#edges { position: absolute; left: 0; top: 0; }
+  .title { position: absolute; left: 40px; top: 24px; font-size: 22px; font-weight: 700; }
+  .subtitle { position: absolute; left: 40px; top: 56px; font-size: 13px; color: var(--muted); }
+
+  /* 그룹: AWS 아이콘 가이드의 그룹 표기 (좌상단 아이콘 + 이름) */
+  .zone { position: absolute; }
+  .zone > .zl { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px;
+                font-size: 13px; font-weight: 700; }
+  .zone > .zl img { width: 32px; height: 32px; display: block; }
+  .cloud { border: 1.5px solid #232f3e; }
+  .vpc { border: 1.5px solid #8c4fff; }
+  .vpc > .zl { color: #8c4fff; }
+  .az { border: 1.5px dashed #147eba; }
+  .az > .zl { left: 10px; top: 6px; color: #147eba; font-weight: 600; }
+  .subnet { border: none; background: #e6f6f7; }
+  .subnet > .zl { color: #00a4a6; font-weight: 600; }
+  .fargate { border: 1.5px solid #ed7100; background: rgba(237, 113, 0, .05); border-radius: 4px; }
+  .fargate > .zl { color: #c45a00; }
+
+  /* 서비스 / 리소스 */
+  .svc { position: absolute; display: flex; align-items: center; gap: 12px; box-sizing: border-box;
+         background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px;
+         box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .svc img { width: 44px; height: 44px; flex: none; }
+  .svc b { display: block; font-size: 14px; }
+  .svc span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .svc.plain { border-style: dashed; background: #fafafa; }
+
+  .badge { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff;
+           font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .notes { position: absolute; left: 40px; top: 925px; width: 1420px; font-size: 13px; line-height: 1.7; }
+  .notes h3 { margin: 0 0 6px; font-size: 14px; }
+  .notes ol { margin: 0; padding-left: 0; list-style: none; }
+  .notes li { display: flex; gap: 10px; margin-bottom: 4px; }
+  .notes li .badge { position: static; flex: none; margin-top: 1px; }
+  .notes .muted { color: var(--muted); }
+  .credit { position: absolute; right: 40px; top: 1115px; font-size: 11px; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div id="canvas">
+  <div class="title">무료 포인트 시스템 AWS 아키텍처</div>
+  <div class="subtitle">외부 인터넷 노출 없이 사내 서비스와 관리자만 접근하는 내부 API</div>
+
+  <!-- 호출 주체 (AWS 밖) -->
+  <div class="svc plain" style="left: 30px; top: 245px; width: 200px; height: 80px;">
+    <img src="icons/client.svg" alt=""><div><b>주문 · 결제 서비스</b><span>사내 MSA</span></div></div>
+  <div class="svc plain" style="left: 30px; top: 400px; width: 200px; height: 80px;">
+    <img src="icons/users.svg" alt=""><div><b>관리자</b><span>수기지급 · 정책 변경</span></div></div>
+  <div class="svc plain" style="left: 30px; top: 790px; width: 200px; height: 74px;">
+    <img src="icons/git-repository.svg" alt=""><div><b>GitHub Actions</b><span>빌드 · 테스트</span></div></div>
+
+  <!-- AWS -->
+  <div class="zone cloud" style="left: 320px; top: 100px; width: 1140px; height: 800px;">
+    <div class="zl"><img src="icons/group-aws-cloud.svg" alt="">AWS Cloud · ap-northeast-2 (서울)</div></div>
+  <div class="zone vpc" style="left: 345px; top: 145px; width: 785px; height: 605px;">
+    <div class="zl"><img src="icons/group-vpc.svg" alt="">VPC</div></div>
+  <div class="zone az" style="left: 365px; top: 190px; width: 370px; height: 545px;">
+    <div class="zl">AZ-a</div></div>
+  <div class="zone az" style="left: 760px; top: 190px; width: 355px; height: 545px;">
+    <div class="zl">AZ-c</div></div>
+  <div class="zone subnet" style="left: 380px; top: 222px; width: 340px; height: 500px;">
+    <div class="zl"><img src="icons/group-private-subnet.svg" alt="">Private subnet</div></div>
+  <div class="zone subnet" style="left: 775px; top: 222px; width: 325px; height: 500px;">
+    <div class="zl"><img src="icons/group-private-subnet.svg" alt="">Private subnet</div></div>
+
+  <div class="svc" style="left: 400px; top: 262px; width: 680px; height: 64px;">
+    <img src="icons/alb.svg" alt=""><div><b>Internal Application Load Balancer</b><span>두 AZ 에 걸친 내부 로드밸런서 · 헬스체크 /actuator/health</span></div></div>
+
+  <div class="zone fargate" style="left: 400px; top: 352px; width: 680px; height: 160px;">
+    <div class="zl"><img src="icons/fargate.svg" alt="" style="width: 28px; height: 28px;">ECS Fargate · Auto Scaling</div></div>
+  <div class="svc" style="left: 425px; top: 395px; width: 280px; height: 90px;">
+    <img src="icons/ecs-task.svg" alt=""><div><b>free-point-api</b><span>Spring Boot · Java 21<br>HikariCP 커넥션 풀</span></div></div>
+  <div class="svc" style="left: 790px; top: 395px; width: 280px; height: 90px;">
+    <img src="icons/ecs-task.svg" alt=""><div><b>free-point-api</b><span>Spring Boot · Java 21<br>HikariCP 커넥션 풀</span></div></div>
+
+  <div class="svc" style="left: 425px; top: 600px; width: 280px; height: 90px;">
+    <img src="icons/aurora-instance.svg" alt=""><div><b>Aurora MySQL · Writer</b><span>잔액 조회 · 모든 변경<br>point_account 행 락</span></div></div>
+  <div class="svc" style="left: 790px; top: 600px; width: 280px; height: 90px;">
+    <img src="icons/aurora-instance.svg" alt=""><div><b>Aurora MySQL · Reader</b><span>장애 시 Writer 승격<br>거래 이력 조회용</span></div></div>
+
+  <!-- 리전 공통 서비스 (VPC 밖) -->
+  <div class="svc" style="left: 1170px; top: 320px; width: 265px; height: 74px;">
+    <img src="icons/secrets-manager.svg" alt=""><div><b>Secrets Manager</b><span>DB 접속 정보</span></div></div>
+  <div class="svc" style="left: 1170px; top: 430px; width: 265px; height: 90px;">
+    <img src="icons/cloudwatch.svg" alt=""><div><b>CloudWatch</b><span>로그 · 지표 · 알람<br>5xx, 409 비율, DB 커넥션</span></div></div>
+  <div class="svc" style="left: 425px; top: 790px; width: 280px; height: 74px;">
+    <img src="icons/ecr.svg" alt=""><div><b>Amazon ECR</b><span>컨테이너 이미지 · 배포 시 pull</span></div></div>
+
+  <svg id="edges" width="1500" height="1150">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/>
+      </marker>
+    </defs>
+  </svg>
+
+  <!-- 설명 배지 -->
+  <div class="badge" style="left: 1068px; top: 251px;">1</div>
+  <div class="badge" style="left: 1068px; top: 341px;">2</div>
+  <div class="badge" style="left: 694px; top: 589px;">3</div>
+
+  <div class="notes">
+    <h3>설계 포인트</h3>
+    <ol>
+      <li><span class="badge">1</span><span><b>Internal ALB 만 둔다.</b> 포인트 API 는 주문 · 결제 서비스가 호출하는 내부 서비스이므로 인터넷에 노출하지 않는다. 관리자도 사내망 / VPN 으로 접근한다.</span></li>
+      <li><span class="badge">2</span><span><b>태스크를 늘려도 안전하다.</b> 동시성 제어를 애플리케이션 메모리가 아닌 DB 행 락(point_account FOR UPDATE)으로 하고, 재시도는 requestId 로 멱등 처리하므로 태스크 수와 무관하게 정합성이 유지된다.</span></li>
+      <li><span class="badge">3</span><span><b>잔액 조회와 변경은 Writer 에서만 한다.</b> Reader 는 복제 지연이 있어 방금 적립한 포인트가 보이지 않을 수 있다. Reader 는 장애 대비와 이력 조회에만 쓴다.</span></li>
+      <li><span class="badge">·</span><span class="muted">두지 않은 것: 만료 배치(EventBridge) — 만료는 expires_at 과 현재 시각으로 판정한다. 잔액 캐시(ElastiCache) — 잔액은 Lot 합계로 계산하며 캐시하지 않는다.</span></li>
+    </ol>
+  </div>
+  <div class="credit">Icons: AWS Architecture Icons</div>
+</div>
+<script>
+const svg = document.getElementById("edges");
+const NS = "http://www.w3.org/2000/svg";
+function edge(points, { dashed = false, label, lx, ly, anchor = "middle" } = {}) {
+  const p = document.createElementNS(NS, "polyline");
+  p.setAttribute("points", points.map(([x, y]) => `${x},${y}`).join(" "));
+  Object.entries({ fill: "none", stroke: "#4b5563", "stroke-width": 1.8, "marker-end": "url(#arrow)" })
+    .forEach(([k, v]) => p.setAttribute(k, v));
+  if (dashed) p.setAttribute("stroke-dasharray", "6 4");
+  svg.appendChild(p);
+  if (label) {
+    const t = document.createElementNS(NS, "text");
+    Object.entries({ x: lx, y: ly, "text-anchor": anchor, "font-size": 12, fill: "#1f2933" })
+      .forEach(([k, v]) => t.setAttribute(k, v));
+    t.textContent = label;
+    svg.appendChild(t);
+  }
+}
+
+// 호출 경로
+edge([[230, 285], [398, 285]], { label: "내부 호출", lx: 238, ly: 275, anchor: "start" });
+edge([[230, 440], [300, 440], [300, 312], [398, 312]], { label: "사내망 / VPN", lx: 236, ly: 462, anchor: "start" });
+edge([[660, 326], [660, 393]]);
+edge([[1025, 326], [1025, 393]]);
+
+// 태스크 -> DB
+edge([[565, 485], [565, 598]]);
+edge([[900, 485], [900, 545], [640, 545], [640, 598]]);
+edge([[1010, 485], [1010, 598]], { dashed: true, label: "이력 조회", lx: 1018, ly: 560, anchor: "start" });
+edge([[705, 645], [788, 645]], { dashed: true, label: "복제", lx: 747.5, ly: 635 });
+
+// 태스크 -> 리전 공통 서비스
+edge([[1080, 432], [1150, 432], [1150, 357], [1168, 357]], { dashed: true });
+edge([[1150, 432], [1150, 475], [1168, 475]], { dashed: true });
+
+// 배포
+edge([[230, 827], [423, 827]], { label: "이미지 push", lx: 372, ly: 817 });
+edge([[565, 790], [565, 752]], { dashed: true, label: "pull", lx: 575, ly: 775, anchor: "start" });
+document.body.dataset.ready = "1";
+</script>
+</body>
+</html>
