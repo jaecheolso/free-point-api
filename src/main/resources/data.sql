@@ -5,11 +5,11 @@
 -- =====================================================================
 
 INSERT INTO point_policy
-    (scope,    user_id, min_earn_amount, max_earn_amount, max_hold_amount,
+    (min_earn_amount, max_earn_amount, max_hold_amount,
      min_expire_period, max_expire_period, default_expire_period,
      effective_from,                      effective_to, created_at)
 VALUES
-    ('GLOBAL', NULL,    1,               100000,          1000000,
+    (1,               100000,          1000000,
      'P1D',             'P5Y',             'P365D',
      TIMESTAMP '2000-01-01 00:00:00',     NULL,         CURRENT_TIMESTAMP);
 

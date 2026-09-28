@@ -4,7 +4,7 @@ title: 무료 포인트 시스템 ERD (점선 = 논리 FK, 물리 FK 없음)
 erDiagram
     point_account ||..o{ point_transaction : "user_id"
     point_account ||..o{ point_lot : "user_id"
-    point_account |o..o{ point_policy : "user_id (USER 정책)"
+    point_account ||..o{ point_user_policy : "user_id"
     point_transaction |o..o{ point_transaction : "related_transaction_id (취소 -> 원거래)"
     point_transaction ||..o| point_lot : "transaction_id (EARN -> Lot)"
     point_transaction ||..o{ point_use_detail : "use_transaction_id (USE)"
@@ -72,14 +72,21 @@ erDiagram
 
     point_policy {
         bigint id PK
-        varchar scope "GLOBAL / USER"
-        bigint user_id FK "USER 정책인 경우"
         bigint min_earn_amount
         bigint max_earn_amount
         bigint max_hold_amount
         varchar min_expire_period "P1D"
         varchar max_expire_period "P5Y (미만)"
         varchar default_expire_period "P365D"
+        timestamp effective_from
+        timestamp effective_to
+        timestamp created_at
+    }
+
+    point_user_policy {
+        bigint id PK
+        bigint user_id FK
+        bigint max_hold_amount "전역 보유 한도를 덮어씀"
         timestamp effective_from
         timestamp effective_to
         timestamp created_at

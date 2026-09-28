@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -90,6 +91,64 @@ class PointApiTest extends IntegrationTest {
     }
 
     @Test
+    void 관리자가_전역_정책을_조회하고_변경한다() throws Exception {
+        mockMvc.perform(get("/api/admin/policies/global"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxEarnAmount").value(100_000))
+                .andExpect(jsonPath("$.defaultExpirePeriod").value("P365D"));
+
+        put("/api/admin/policies/global", """
+                {"maxEarnAmount": 50000, "maxHoldAmount": 2000000}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxEarnAmount").value(50_000))
+                .andExpect(jsonPath("$.maxHoldAmount").value(2_000_000));
+
+        post("/api/points/earn", """
+                {"userId": 1, "amount": 50001, "requestId": "%s"}
+                """.formatted(requestId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_EARN_AMOUNT"));
+    }
+
+    @Test
+    void 관리자가_개인_보유_한도를_설정하고_해제한다() throws Exception {
+        mockMvc.perform(get("/api/admin/policies/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxHoldAmount").value(1_000_000))
+                .andExpect(jsonPath("$.personal").value(false));
+
+        put("/api/admin/policies/users/1", """
+                {"maxHoldAmount": 3000}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxHoldAmount").value(3_000))
+                .andExpect(jsonPath("$.personal").value(true));
+
+        mockMvc.perform(delete("/api/admin/policies/users/1"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/admin/policies/users/1"))
+                .andExpect(jsonPath("$.maxHoldAmount").value(1_000_000))
+                .andExpect(jsonPath("$.personal").value(false));
+    }
+
+    @Test
+    void 잘못된_정책_값은_400_으로_응답한다() throws Exception {
+        put("/api/admin/policies/global", """
+                {"maxEarnAmount": 0, "maxHoldAmount": 1000000}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_POLICY"));
+
+        put("/api/admin/policies/users/1", """
+                {}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void 도메인_규칙_위반은_에러코드와_메시지로_응답한다() throws Exception {
         post("/api/points/use", """
                 {"userId": 1, "orderNo": "O-1", "amount": 1, "requestId": "%s"}
@@ -131,11 +190,18 @@ class PointApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(docs).contains("/api/points/earn", "/api/points/use", "/api/admin/points/manual-earn");
+        assertThat(docs).contains("/api/points/earn", "/api/points/use", "/api/admin/points/manual-earn",
+                "/api/admin/policies/global", "/api/admin/policies/users/{userId}");
     }
 
     private ResultActions post(String url, String body) throws Exception {
         return mockMvc.perform(MockMvcRequestBuilders.post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    private ResultActions put(String url, String body) throws Exception {
+        return mockMvc.perform(MockMvcRequestBuilders.put(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body));
     }

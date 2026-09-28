@@ -1,8 +1,8 @@
 package com.freepoint.service;
 
+import com.freepoint.domain.EffectivePolicy;
 import com.freepoint.domain.LotSource;
 import com.freepoint.domain.PointLot;
-import com.freepoint.domain.PointPolicy;
 import com.freepoint.domain.PointTransaction;
 import com.freepoint.domain.TransactionType;
 import com.freepoint.exception.ErrorCode;
@@ -48,7 +48,7 @@ public class PointEarnService {
             throw new PointException(ErrorCode.GRANTED_BY_REQUIRED);
         }
 
-        PointPolicy policy = policyService.getEffectivePolicy(command.userId(), now);
+        EffectivePolicy policy = policyService.getEffectivePolicy(command.userId(), now);
         policy.validateEarnAmount(command.amount());
         LocalDateTime expiresAt = policy.resolveExpiresAt(command.expiresAt(), now);
         policy.validateHoldLimit(lotRepository.sumUsableAmount(command.userId(), now), command.amount());

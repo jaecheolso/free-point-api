@@ -150,7 +150,7 @@ public class PointUseService {
 
     private PointLot reissue(PointLot expired, long amount, LocalDateTime now) {
         LocalDateTime expiresAt = now.plus(
-                policyService.getEffectivePolicy(expired.getUserId(), now).getDefaultExpirePeriod());
+                policyService.getEffectivePolicy(expired.getUserId(), now).defaultExpirePeriod());
         PointTransaction reissue = transactionRepository.save(
                 PointTransaction.reissue(expired.getUserId(), amount, now));
         return lotRepository.save(PointLot.reissue(reissue, expired, expiresAt, now));

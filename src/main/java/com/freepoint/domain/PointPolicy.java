@@ -4,8 +4,6 @@ import com.freepoint.exception.ErrorCode;
 import com.freepoint.exception.PointException;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,7 +16,7 @@ import java.time.LocalDateTime;
 import java.time.Period;
 
 /**
- * 포인트 정책. 변경 시 기존 행을 수정하지 않고 effectiveTo 로 닫은 뒤 새 행을 추가한다.
+ * 전역 포인트 정책. 변경 시 기존 행을 수정하지 않고 effectiveTo 로 닫은 뒤 새 행을 추가한다.
  */
 @Entity
 @Table(name = "point_policy")
@@ -29,11 +27,6 @@ public class PointPolicy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Enumerated(EnumType.STRING)
-    private PolicyScope scope;
-
-    private Long userId;
 
     private long minEarnAmount;
 
@@ -56,34 +49,33 @@ public class PointPolicy {
 
     private LocalDateTime createdAt;
 
-    public void validateEarnAmount(long amount) {
-        if (amount < minEarnAmount || amount > maxEarnAmount) {
-            throw new PointException(ErrorCode.INVALID_EARN_AMOUNT,
-                    "(허용 범위 " + minEarnAmount + " ~ " + maxEarnAmount + ", 요청 " + amount + ")");
-        }
-    }
-
-    public void validateHoldLimit(long currentBalance, long earnAmount) {
-        if (currentBalance + earnAmount > maxHoldAmount) {
-            throw new PointException(ErrorCode.HOLD_LIMIT_EXCEEDED,
-                    "(최대 " + maxHoldAmount + ", 현재 " + currentBalance + ", 요청 " + earnAmount + ")");
-        }
-    }
-
     /**
-     * 요청 만료일을 검증해 확정한다. 지정하지 않으면 기본 만료 기간을 적용한다.
-     * 허용 범위: now + 최소기간 <= expiresAt < now + 최대기간 (명세 "최대 5년 미만")
+     * 1회 최대 적립액과 보유 한도를 바꾼 다음 정책을 만든다. 나머지 항목은 명세 고정값이므로 그대로 승계한다.
      */
-    public LocalDateTime resolveExpiresAt(LocalDateTime requested, LocalDateTime now) {
-        if (requested == null) {
-            return now.plus(defaultExpirePeriod);
+    public PointPolicy revise(long maxEarnAmount, long maxHoldAmount, LocalDateTime now) {
+        if (maxEarnAmount < minEarnAmount || maxHoldAmount < 1) {
+            throw new PointException(ErrorCode.INVALID_POLICY,
+                    "(1회 최대 적립액 " + minEarnAmount + " 이상, 보유 한도 1 이상, 요청 "
+                            + maxEarnAmount + " / " + maxHoldAmount + ")");
         }
-        LocalDateTime min = now.plus(minExpirePeriod);
-        LocalDateTime max = now.plus(maxExpirePeriod);
-        if (requested.isBefore(min) || !requested.isBefore(max)) {
-            throw new PointException(ErrorCode.INVALID_EXPIRES_AT,
-                    "(허용 범위 " + min + " 이상 " + max + " 미만, 요청 " + requested + ")");
-        }
-        return requested;
+        PointPolicy next = new PointPolicy();
+        next.minEarnAmount = minEarnAmount;
+        next.maxEarnAmount = maxEarnAmount;
+        next.maxHoldAmount = maxHoldAmount;
+        next.minExpirePeriod = minExpirePeriod;
+        next.maxExpirePeriod = maxExpirePeriod;
+        next.defaultExpirePeriod = defaultExpirePeriod;
+        next.effectiveFrom = now;
+        next.createdAt = now;
+        return next;
+    }
+
+    public void close(LocalDateTime now) {
+        this.effectiveTo = now;
+    }
+
+    public EffectivePolicy toEffectivePolicy(long maxHoldAmount) {
+        return new EffectivePolicy(minEarnAmount, maxEarnAmount, maxHoldAmount,
+                minExpirePeriod, maxExpirePeriod, defaultExpirePeriod);
     }
 }

@@ -14,7 +14,6 @@ import com.freepoint.support.IntegrationTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -37,7 +36,7 @@ class PointEarnServiceTest extends IntegrationTest {
     PointLotRepository lotRepository;
 
     @Autowired
-    JdbcTemplate jdbcTemplate;
+    PointPolicyService policyService;
 
     @Nested
     class 적립 {
@@ -78,12 +77,12 @@ class PointEarnServiceTest extends IntegrationTest {
         }
 
         @Test
-        void 개인별_정책이_있으면_전역_정책보다_우선한다() {
-            insertUserPolicy(USER, 5_000, 1_000_000);
+        void 변경된_1회_최대_적립액을_즉시_적용한다() {
+            policyService.updateGlobalPolicy(5_000, 1_000_000);
 
             assertThatThrownBy(() -> earnService.earn(systemEarn(USER, 5_001, null)))
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_EARN_AMOUNT);
-            earnService.earn(systemEarn(2L, 5_001, null));
+            earnService.earn(systemEarn(USER, 5_000, null));
         }
 
         @Test
@@ -98,7 +97,7 @@ class PointEarnServiceTest extends IntegrationTest {
 
         @Test
         void 개인별_보유_한도를_적용한다() {
-            insertUserPolicy(USER, 100_000, 3_000);
+            policyService.updateUserMaxHold(USER, 3_000);
             earnService.earn(systemEarn(USER, 3_000, null));
 
             assertThatThrownBy(() -> earnService.earn(systemEarn(USER, 1, null)))
@@ -261,15 +260,5 @@ class PointEarnServiceTest extends IntegrationTest {
 
     private long balance(long userId) {
         return lotRepository.sumUsableAmount(userId, now());
-    }
-
-    private void insertUserPolicy(long userId, long maxEarnAmount, long maxHoldAmount) {
-        jdbcTemplate.update("""
-                INSERT INTO point_policy
-                    (scope, user_id, min_earn_amount, max_earn_amount, max_hold_amount,
-                     min_expire_period, max_expire_period, default_expire_period,
-                     effective_from, effective_to, created_at)
-                VALUES ('USER', ?, 1, ?, ?, 'P1D', 'P5Y', 'P365D', ?, NULL, ?)
-                """, userId, maxEarnAmount, maxHoldAmount, now().minusDays(1), now());
     }
 }

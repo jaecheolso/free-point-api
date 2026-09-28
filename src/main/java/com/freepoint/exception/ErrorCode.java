@@ -11,6 +11,7 @@ public enum ErrorCode {
 
     ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "포인트 계정이 존재하지 않습니다."),
     TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "포인트 거래가 존재하지 않습니다."),
+    USER_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "개인별 포인트 정책이 존재하지 않습니다."),
 
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     INVALID_EARN_AMOUNT(HttpStatus.BAD_REQUEST, "1회 적립 가능 금액 범위를 벗어났습니다."),
@@ -21,6 +22,7 @@ public enum ErrorCode {
     ORDER_NO_REQUIRED(HttpStatus.BAD_REQUEST, "포인트 사용 시 주문번호가 필요합니다."),
     NOT_USE_TRANSACTION(HttpStatus.BAD_REQUEST, "사용 거래만 사용취소할 수 있습니다."),
     INVALID_CANCEL_AMOUNT(HttpStatus.BAD_REQUEST, "사용취소 금액은 1 이상이어야 합니다."),
+    INVALID_POLICY(HttpStatus.BAD_REQUEST, "정책 값이 올바르지 않습니다."),
 
     HOLD_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "최대 보유 가능 금액을 초과합니다."),
     INSUFFICIENT_BALANCE(HttpStatus.CONFLICT, "사용 가능한 포인트가 부족합니다."),
