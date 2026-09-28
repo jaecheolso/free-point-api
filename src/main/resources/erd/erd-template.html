@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --ink: #1f2933; --muted: #6b7280; --line: #4b5563; --grid: #e5e7eb;
+    --mono: "SF Mono", Menlo, monospace;
+    --sans: -apple-system, "Apple SD Gothic Neo", sans-serif;
+  }
+  body { margin: 0; background: #fff; font-family: var(--sans); color: var(--ink); }
+  #canvas { position: relative; background: #fff; }
+  svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .title { position: absolute; left: 40px; top: 24px; font-size: 22px; font-weight: 700; }
+  .subtitle { position: absolute; left: 40px; top: 56px; font-size: 13px; color: var(--muted); }
+  .tbl { position: absolute; border: 1.5px solid var(--c); border-radius: 6px; background: #fff;
+         box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }
+  .hd { background: var(--c); color: #fff; font-weight: 700; font-size: 14px; padding: 7px 12px;
+        display: flex; justify-content: space-between; gap: 16px; }
+  .hd small { font-weight: 500; opacity: .9; }
+  table { border-collapse: collapse; font-size: 12px; }
+  td { padding: 4px 10px; border-top: 1px solid var(--grid); white-space: nowrap; height: 17px; }
+  td.type { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  td.name { font-family: var(--mono); font-weight: 600; }
+  td.key { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--c); }
+  td.note { color: var(--muted); }
+  tr.pk td.name { text-decoration: underline; }
+  .note-box { position: absolute; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .legend { position: absolute; border: 1px solid var(--grid); border-radius: 6px; padding: 12px 16px;
+            font-size: 12px; background: #fafafa; }
+  .legend b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="canvas">
+  <div class="title">무료 포인트 시스템 ERD</div>
+  <div class="subtitle">점선 = 논리 FK (물리 FK 없음, 참조 무결성은 애플리케이션에서 보장)</div>
+  <svg id="edges"></svg>
+</div>
+<script>
+const ENTITIES = /*ENTITIES*/;
+
+// 영역별 색: 계정 / 원장 / 잔액 / 사용 추적 / 정책
+const COLORS = {
+  point_account: "#7c3aed",
+  point_transaction: "#0f766e",
+  point_lot: "#c2410c",
+  point_use_detail: "#15803d",
+  point_use_cancel_detail: "#4338ca",
+  point_policy: "#be123c",
+  point_user_policy: "#be123c",
+};
+const CAPTIONS = {
+  point_account: "계정 · 락 대상",
+  point_transaction: "거래 원장",
+  point_lot: "적립 단위 · 잔액",
+  point_use_detail: "사용 상세",
+  point_use_cancel_detail: "사용취소 상세",
+  point_policy: "전역 정책",
+  point_user_policy: "개인 보유 한도",
+};
+
+const canvas = document.getElementById("canvas");
+const svg = document.getElementById("edges");
+const NS = "http://www.w3.org/2000/svg";
+
+for (const [name, cols] of Object.entries(ENTITIES)) {
+  const div = document.createElement("div");
+  div.className = "tbl";
+  div.id = name;
+  div.style.setProperty("--c", COLORS[name]);
+  const rows = cols.map(c => `<tr class="${c.key.includes("PK") ? "pk" : ""}">
+      <td class="type">${c.type}</td><td class="name">${c.name}</td>
+      <td class="key">${c.key}</td><td class="note">${c.note}</td></tr>`).join("");
+  div.innerHTML = `<div class="hd"><span>${name}</span><small>${CAPTIONS[name]}</small></div><table>${rows}</table>`;
+  canvas.appendChild(div);
+}
+
+const el = n => document.getElementById(n);
+const W = n => el(n).offsetWidth;
+const H = n => el(n).offsetHeight;
+function place(n, x, y) { el(n).style.left = x + "px"; el(n).style.top = y + "px"; }
+function box(n) {
+  const e = el(n), x = e.offsetLeft, y = e.offsetTop, w = e.offsetWidth, h = e.offsetHeight;
+  return { x, y, w, h, r: x + w, b: y + h, cx: x + w / 2, cy: y + h / 2 };
+}
+
+// ---- 배치: 4개 열 ----
+// 열1: 개인 정책 / 거래   열2: 계정 / 사용상세 / 사용취소상세   열3: Lot   열4: 전역 정책
+const M = 230, G = 190, TOP = 110;
+const W1 = Math.max(W("point_user_policy"), W("point_transaction"));
+const W2 = Math.max(W("point_account"), W("point_use_detail"), W("point_use_cancel_detail"));
+const W3 = W("point_lot");
+const X1 = M, X2 = X1 + W1 + G, X3 = X2 + W2 + G;
+const centerIn = (n, colX, colW) => colX + (colW - W(n)) / 2;
+
+place("point_account", centerIn("point_account", X2, W2), TOP);
+const acc0 = box("point_account");
+place("point_user_policy", centerIn("point_user_policy", X1, W1), TOP);
+place("point_policy", X3 + W3 - W("point_policy"), TOP);
+
+// 전역 정책 설명 (정책 테이블 아래)
+const pol0 = box("point_policy");
+const note = document.createElement("div");
+note.className = "note-box";
+note.style.left = pol0.x + "px"; note.style.top = (pol0.b + 10) + "px"; note.style.width = pol0.w + "px";
+note.innerHTML = "다른 테이블과 FK 관계 없음. effective_from ~ effective_to 로<br>적용 시점의 정책을 조회한다. point_user_policy 가 있으면<br>보유 한도만 덮어쓴다.";
+canvas.appendChild(note);
+
+const row0Bottom = Math.max(box("point_account").b, box("point_user_policy").b,
+    note.offsetTop + note.offsetHeight);
+const ELBOW = row0Bottom + 45;
+const ROW1 = ELBOW + 55;
+place("point_transaction", centerIn("point_transaction", X1, W1), ROW1);
+place("point_lot", X3, ROW1);
+const TL_Y = ROW1 + 70; // 거래 -> Lot 연결선 높이
+place("point_use_detail", centerIn("point_use_detail", X2, W2), TL_Y + 75);
+const ROW3 = Math.max(box("point_transaction").b, box("point_lot").b, box("point_use_detail").b) + 110;
+place("point_use_cancel_detail", centerIn("point_use_cancel_detail", X2, W2), ROW3);
+
+const acc = box("point_account"), up = box("point_user_policy"), tx = box("point_transaction"),
+      lot = box("point_lot"), ud = box("point_use_detail"), cd = box("point_use_cancel_detail"),
+      pol = box("point_policy");
+
+// ---- 그리기 도구 ----
+function path(points) {
+  const p = document.createElementNS(NS, "polyline");
+  p.setAttribute("points", points.map(([x, y]) => `${x},${y}`).join(" "));
+  p.setAttribute("fill", "none");
+  p.setAttribute("stroke", "var(--line)");
+  p.setAttribute("stroke-width", "1.6");
+  p.setAttribute("stroke-dasharray", "6 4");
+  svg.appendChild(p);
+}
+function seg(x1, y1, x2, y2) {
+  const l = document.createElementNS(NS, "line");
+  Object.entries({ x1, y1, x2, y2, stroke: "var(--line)", "stroke-width": 1.8 }).forEach(([k, v]) => l.setAttribute(k, v));
+  svg.appendChild(l);
+}
+function circle(x, y) {
+  const c = document.createElementNS(NS, "circle");
+  Object.entries({ cx: x, cy: y, r: 5, fill: "#fff", stroke: "var(--line)", "stroke-width": 1.8 }).forEach(([k, v]) => c.setAttribute(k, v));
+  svg.appendChild(c);
+}
+// (x, y): 테이블 테두리 위의 끝점, (dx, dy): 테이블에서 선 쪽으로 향하는 단위 벡터
+function marker(x, y, dx, dy, kind) {
+  const px = -dy, py = dx; // 수직 방향
+  const at = d => [x + dx * d, y + dy * d];
+  const bar = d => { const [cx, cy] = at(d); seg(cx - px * 7, cy - py * 7, cx + px * 7, cy + py * 7); };
+  if (kind === "one") { bar(8); bar(14); }
+  if (kind === "zeroOne") { bar(8); circle(...at(20)); }
+  if (kind === "zeroMany") {
+    const [fx, fy] = at(15);
+    for (const o of [-8, 0, 8]) seg(fx, fy, x + px * o, y + py * o);
+    circle(...at(22));
+  }
+}
+function label(x, y, main, sub, anchor = "middle") {
+  const g = document.createElementNS(NS, "g");
+  const t = document.createElementNS(NS, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y); t.setAttribute("text-anchor", anchor);
+  t.innerHTML = `<tspan x="${x}" font-family="SF Mono, Menlo, monospace" font-size="12" font-weight="600" fill="#1f2933">${main}</tspan>`
+    + (sub ? `<tspan x="${x}" dy="16" font-size="11.5" fill="#6b7280">${sub}</tspan>` : "");
+  g.appendChild(t);
+  svg.appendChild(g);
+  const bb = t.getBBox();
+  const bg = document.createElementNS(NS, "rect");
+  Object.entries({ x: bb.x - 5, y: bb.y - 3, width: bb.width + 10, height: bb.height + 6, fill: "#fff", rx: 3 })
+    .forEach(([k, v]) => bg.setAttribute(k, v));
+  g.insertBefore(bg, t);
+}
+
+// ---- 관계 ----
+// 1) 계정 -> 개인 보유 한도
+path([[acc.x, acc.cy], [up.r, acc.cy]]);
+marker(acc.x, acc.cy, -1, 0, "one"); marker(up.r, acc.cy, 1, 0, "zeroMany");
+label((acc.x + up.r) / 2, acc.cy - 12, "user_id");
+
+// 2) 계정 -> 거래 / Lot (계정 아래에서 좌우로 갈라짐)
+const aL = acc.x + acc.w * 0.3, aR = acc.x + acc.w * 0.7;
+path([[aL, acc.b], [aL, ELBOW], [tx.cx, ELBOW], [tx.cx, tx.y]]);
+marker(aL, acc.b, 0, 1, "one"); marker(tx.cx, tx.y, 0, -1, "zeroMany");
+label((aL + tx.cx) / 2, ELBOW - 10, "user_id");
+path([[aR, acc.b], [aR, ELBOW], [lot.cx, ELBOW], [lot.cx, lot.y]]);
+marker(aR, acc.b, 0, 1, "one"); marker(lot.cx, lot.y, 0, -1, "zeroMany");
+label((aR + lot.cx) / 2, ELBOW - 10, "user_id");
+
+// 3) 거래 자기참조 (취소 -> 원거래)
+const rowY = (n, col) => {
+  const i = ENTITIES[n].findIndex(c => c.name === col);
+  const tr = el(n).querySelectorAll("tr")[i];
+  return el(n).offsetTop + tr.offsetTop + el(n).querySelector("table").offsetTop + tr.offsetHeight / 2;
+};
+const sy1 = rowY("point_transaction", "id"), sy2 = rowY("point_transaction", "related_transaction_id"), sx = tx.x - 42;
+path([[tx.x, sy1], [sx, sy1], [sx, sy2], [tx.x, sy2]]);
+marker(tx.x, sy1, -1, 0, "zeroOne"); marker(tx.x, sy2, -1, 0, "zeroMany");
+label(sx - 12, (sy1 + sy2) / 2 - 4, "related_transaction_id", "취소 → 원거래", "end");
+
+// 4) 거래 -> Lot (적립 1건 = Lot 1개)
+path([[tx.r, TL_Y], [lot.x, TL_Y]]);
+marker(tx.r, TL_Y, 1, 0, "one"); marker(lot.x, TL_Y, -1, 0, "zeroOne");
+label((tx.r + lot.x) / 2, TL_Y - 22, "transaction_id", "EARN 거래 1건 = Lot 1개");
+
+// 5) 사용 상세: 거래(USE) / Lot 사이의 연결 테이블
+path([[tx.r, ud.cy], [ud.x, ud.cy]]);
+marker(tx.r, ud.cy, 1, 0, "one"); marker(ud.x, ud.cy, -1, 0, "zeroMany");
+label((tx.r + ud.x) / 2, ud.cy - 22, "use_transaction_id", "USE 거래");
+path([[ud.r, ud.cy], [lot.x, ud.cy]]);
+marker(lot.x, ud.cy, -1, 0, "one"); marker(ud.r, ud.cy, 1, 0, "zeroMany");
+label((ud.r + lot.x) / 2, ud.cy - 22, "lot_id", "차감한 Lot");
+
+// 6) 사용취소 상세
+path([[ud.cx, ud.b], [ud.cx, cd.y]]);
+marker(ud.cx, ud.b, 0, 1, "one"); marker(ud.cx, cd.y, 0, -1, "zeroMany");
+label(ud.cx + 14, (ud.b + cd.y) / 2 - 4, "use_detail_id", "되돌린 사용 상세", "start");
+
+const cY1 = cd.y + cd.h * 0.35, cY2 = cd.y + cd.h * 0.65;
+path([[tx.cx, tx.b], [tx.cx, cY1], [cd.x, cY1]]);
+marker(tx.cx, tx.b, 0, 1, "one"); marker(cd.x, cY1, -1, 0, "zeroMany");
+label((tx.cx + cd.x) / 2, cY1 - 22, "cancel_transaction_id", "USE_CANCEL 거래");
+
+path([[lot.cx, lot.b], [lot.cx, cY2], [cd.r, cY2]]);
+marker(lot.cx, lot.b, 0, 1, "zeroOne"); marker(cd.r, cY2, 1, 0, "zeroOne");
+label((lot.cx + cd.r) / 2, cY2 - 22, "reissued_lot_id", "만료 Lot 재적립 시");
+
+// 범례: 본 SVG 에 직접 그린다. (div 로 그리면 SVG 위를 덮는다)
+{
+  const lx = 40, ly = tx.b + 40, lw = 250, lh = 128;
+  const bg = document.createElementNS(NS, "rect");
+  Object.entries({ x: lx, y: ly, width: lw, height: lh, rx: 6, fill: "#fafafa", stroke: "#e5e7eb" })
+    .forEach(([k, v]) => bg.setAttribute(k, v));
+  svg.appendChild(bg);
+  const text = (x, y, t, extra = {}) => {
+    const e = document.createElementNS(NS, "text");
+    Object.entries({ x, y, "font-size": 12, fill: "#1f2933", ...extra }).forEach(([k, v]) => e.setAttribute(k, v));
+    e.textContent = t;
+    svg.appendChild(e);
+  };
+  text(lx + 16, ly + 24, "관계 표기", { "font-size": 13, "font-weight": 700 });
+  [["one", "정확히 1"], ["zeroOne", "0 또는 1"], ["zeroMany", "0 이상 (N)"]].forEach(([k, t], i) => {
+    const y = ly + 50 + i * 26, tableEdge = lx + 16;
+    path([[tableEdge, y], [tableEdge + 70, y]]);
+    seg(tableEdge, y - 9, tableEdge, y + 9); // 테이블 테두리 표시
+    marker(tableEdge, y, 1, 0, k);
+    text(tableEdge + 86, y + 4, t);
+  });
+  window.legendBottom = ly + lh;
+}
+
+// ---- 캔버스 크기 ----
+const all = [...document.querySelectorAll(".tbl, .note-box")].map(e => e.getBoundingClientRect());
+const width = Math.max(...all.map(r => r.right)) + 40;
+const height = Math.max(...all.map(r => r.bottom), window.legendBottom) + 40;
+canvas.style.width = width + "px"; canvas.style.height = height + "px";
+svg.setAttribute("width", width); svg.setAttribute("height", height);
+document.body.dataset.ready = "1";
+</script>
+</body>
+</html>
