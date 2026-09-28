@@ -40,11 +40,15 @@ public class PointPolicyService {
         return GlobalPolicyResult.of(findGlobalPolicy(LocalDateTime.now(clock)));
     }
 
+    /**
+     * 동시에 변경하면 먼저 커밋된 변경만 반영하고 나머지는 충돌로 거절한다.
+     * 뒤의 요청을 이어서 반영하면 앞선 변경을 보지 못한 채 덮어쓰게 되기 때문이다.
+     */
     @Transactional
     public GlobalPolicyResult updateGlobalPolicy(long maxEarnAmount, long maxHoldAmount) {
         LocalDateTime now = LocalDateTime.now(clock);
-        PointPolicy current = policyRepository.findEffectiveGlobalPolicyForUpdate(now)
-                .orElseThrow(() -> noGlobalPolicy(now));
+        PointPolicy current = policyRepository.findOpenGlobalPolicyForUpdate()
+                .orElseThrow(() -> new PointException(ErrorCode.DATA_CONFLICT));
         PointPolicy next = current.revise(maxEarnAmount, maxHoldAmount, now);
         current.close(now);
         return GlobalPolicyResult.of(policyRepository.save(next));
