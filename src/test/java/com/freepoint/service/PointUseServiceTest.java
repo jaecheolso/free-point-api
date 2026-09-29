@@ -290,6 +290,20 @@ class PointUseServiceTest extends IntegrationTest {
         }
 
         @Test
+        void 추가_취소_후_이전_요청을_재시도해도_첫_응답과_같은_취소_가능_금액을_반환한다() {
+            earn(LotSource.SYSTEM, 1000, null);
+            UseResult used = useService.use(use(USER, "O-1", 500));
+            UseCancelCommand command = cancel(used.pointKey(), 100);
+            UseCancelResult first = useService.cancelUse(command);
+            useService.cancelUse(cancel(used.pointKey(), 200));
+
+            UseCancelResult second = useService.cancelUse(command);
+
+            assertThat(first.remainingCancelableAmount()).isEqualTo(400);
+            assertThat(second).isEqualTo(first);
+        }
+
+        @Test
         void 같은_requestId_로_취소_금액이_다르면_거부한다() {
             earn(LotSource.SYSTEM, 1000, null);
             UseResult used = useService.use(use(USER, "O-1", 500));

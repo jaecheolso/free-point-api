@@ -186,6 +186,19 @@ class PointEarnServiceTest extends IntegrationTest {
         }
 
         @Test
+        void 기본_만료일도_초_단위로_저장되어_재시도_응답이_첫_응답과_같다() {
+            clock.setInstant(BASE_INSTANT.plusNanos(123_456_789));
+            EarnCommand command = new EarnCommand(USER, 1000, null, LotSource.SYSTEM, null, requestId(), null);
+            EarnResult first = earnService.earn(command);
+            entityManager.flush();
+            entityManager.clear();
+
+            EarnResult second = earnService.earn(command);
+
+            assertThat(second).isEqualTo(first);
+        }
+
+        @Test
         void 만료일은_초_단위로_저장되어_DB_에서_다시_읽어도_재시도가_기존_결과를_반환한다() {
             EarnCommand command = new EarnCommand(USER, 1000, now().plusDays(10).plusNanos(123_456_789),
                     LotSource.SYSTEM, null, requestId(), null);

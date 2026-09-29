@@ -195,7 +195,8 @@ public class PointUseService {
                             cancelDetail.getRestoreType(), reissuedPointKey);
                 })
                 .toList();
+        long canceledUpToExisting = transactionRepository.sumUseCanceledAmountUpTo(use.getId(), existing.getId());
         return new UseCancelResult(existing.getPointKey(), use.getPointKey(), use.getUserId(), existing.getAmount(),
-                use.cancelableAmount(), restoredLots);
+                use.getAmount() - canceledUpToExisting, restoredLots);
     }
 }

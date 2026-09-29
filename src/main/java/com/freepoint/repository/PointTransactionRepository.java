@@ -18,4 +18,15 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
      */
     @Query("select t.userId from PointTransaction t where t.pointKey = :pointKey")
     Optional<Long> findUserIdByPointKey(String pointKey);
+
+    /**
+     * 사용 거래에 대해 cancelId 거래까지(포함) 누적된 사용취소 금액. 재시도 응답을 첫 응답 시점 기준으로 재구성할 때 쓴다.
+     */
+    @Query("""
+            select coalesce(sum(t.amount), 0) from PointTransaction t
+            where t.relatedTransactionId = :useId
+              and t.type = com.freepoint.domain.TransactionType.USE_CANCEL
+              and t.id <= :cancelId
+            """)
+    long sumUseCanceledAmountUpTo(Long useId, Long cancelId);
 }

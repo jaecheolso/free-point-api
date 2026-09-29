@@ -38,10 +38,10 @@ public record EffectivePolicy(
      * 허용 범위: now + 최소기간 <= expiresAt < now + 최대기간 (명세 "최대 5년 미만")
      */
     public LocalDateTime resolveExpiresAt(LocalDateTime requested, LocalDateTime now) {
-        if (requested == null) {
-            return now.plus(defaultExpirePeriod);
-        }
         // DB(TIMESTAMP)의 소수점 이하 초 정밀도에 따라 저장 값이 달라지지 않도록 초 단위로 맞춘다.
+        if (requested == null) {
+            return now.plus(defaultExpirePeriod).truncatedTo(ChronoUnit.SECONDS);
+        }
         LocalDateTime normalized = requested.truncatedTo(ChronoUnit.SECONDS);
         LocalDateTime min = now.plus(minExpirePeriod);
         LocalDateTime max = now.plus(maxExpirePeriod);
