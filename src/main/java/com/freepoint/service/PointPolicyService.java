@@ -47,10 +47,11 @@ public class PointPolicyService {
     @Transactional
     public GlobalPolicyResult updateGlobalPolicy(long maxEarnAmount, long maxHoldAmount) {
         LocalDateTime now = LocalDateTime.now(clock);
-        PointPolicy current = policyRepository.findOpenGlobalPolicyForUpdate()
-                .orElseThrow(() -> new PointException(ErrorCode.DATA_CONFLICT));
+        PointPolicy current = findGlobalPolicy(now);
         PointPolicy next = current.revise(maxEarnAmount, maxHoldAmount, now);
-        current.close(now);
+        if (policyRepository.closeIfOpen(current.getId(), now) == 0) {
+            throw new PointException(ErrorCode.DATA_CONFLICT);
+        }
         return GlobalPolicyResult.of(policyRepository.save(next));
     }
 

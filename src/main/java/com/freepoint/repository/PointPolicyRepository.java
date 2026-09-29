@@ -1,9 +1,8 @@
 package com.freepoint.repository;
 
 import com.freepoint.domain.PointPolicy;
-import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
@@ -19,10 +18,10 @@ public interface PointPolicyRepository extends JpaRepository<PointPolicy, Long> 
     Optional<PointPolicy> findEffectiveGlobalPolicy(LocalDateTime now);
 
     /**
-     * SELECT ... FOR UPDATE. 현재 열린(effectiveTo 가 없는) 정책을 잠가 전역 정책 변경을 직렬화한다.
-     * 락 대기 중 다른 변경이 커밋되면 잠그려던 행이 닫히므로 결과가 비어 있다.
+     * 아직 열려 있는(effectiveTo 가 없는) 경우에만 닫는다. 다른 변경이 먼저 닫았다면 0을 반환한다.
+     * 락을 기다린 UPDATE 는 커밋된 최신 행으로 조건을 다시 평가하므로 H2 / MySQL 모두 같게 동작한다.
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select p from PointPolicy p where p.effectiveTo is null")
-    Optional<PointPolicy> findOpenGlobalPolicyForUpdate();
+    @Modifying
+    @Query("update PointPolicy p set p.effectiveTo = :now where p.id = :id and p.effectiveTo is null")
+    int closeIfOpen(Long id, LocalDateTime now);
 }

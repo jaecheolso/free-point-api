@@ -70,10 +70,6 @@ public class PointPolicy {
         return next;
     }
 
-    public void close(LocalDateTime now) {
-        this.effectiveTo = now;
-    }
-
     public EffectivePolicy toEffectivePolicy(long maxHoldAmount) {
         return new EffectivePolicy(minEarnAmount, maxEarnAmount, maxHoldAmount,
                 minExpirePeriod, maxExpirePeriod, defaultExpirePeriod);
