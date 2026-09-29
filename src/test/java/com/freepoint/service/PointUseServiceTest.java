@@ -163,6 +163,21 @@ class PointUseServiceTest extends IntegrationTest {
             assertThat(second.usedLots()).isEqualTo(first.usedLots());
             assertThat(balance()).isEqualTo(700);
         }
+
+        @Test
+        void 같은_requestId_로_금액이나_주문번호가_다르면_거부한다() {
+            earn(LotSource.SYSTEM, 1000, null);
+            UseCommand command = use(USER, "O-1", 300);
+            useService.use(command);
+
+            assertThatThrownBy(() -> useService.use(
+                    new UseCommand(USER, "O-1", 500, command.requestId(), null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
+            assertThatThrownBy(() -> useService.use(
+                    new UseCommand(USER, "O-2", 300, command.requestId(), null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
+            assertThat(balance()).isEqualTo(700);
+        }
     }
 
     @Nested
@@ -271,6 +286,19 @@ class PointUseServiceTest extends IntegrationTest {
             UseCancelResult second = useService.cancelUse(command);
 
             assertThat(second.pointKey()).isEqualTo(first.pointKey());
+            assertThat(balance()).isEqualTo(700);
+        }
+
+        @Test
+        void 같은_requestId_로_취소_금액이_다르면_거부한다() {
+            earn(LotSource.SYSTEM, 1000, null);
+            UseResult used = useService.use(use(USER, "O-1", 500));
+            UseCancelCommand command = cancel(used.pointKey(), 200);
+            useService.cancelUse(command);
+
+            assertThatThrownBy(() -> useService.cancelUse(
+                    new UseCancelCommand(used.pointKey(), 300, command.requestId(), null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
             assertThat(balance()).isEqualTo(700);
         }
     }

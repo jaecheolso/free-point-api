@@ -91,11 +91,20 @@ public class PointEarnService {
                 .orElseThrow(() -> new PointException(ErrorCode.ACCOUNT_NOT_FOUND));
     }
 
+    /**
+     * 같은 requestId 라도 요청 내용이 다르면 거부한다. 만료일은 요청에 있을 때만 비교한다.
+     * 생략하면 기본 만료 기간을 요청 시각 기준으로 계산하므로 재시도 시점에 다시 계산한 값과 다르기 때문이다.
+     */
     private EarnResult replayEarn(PointTransaction existing, EarnCommand command) {
-        if (!existing.isType(TransactionType.EARN) || !Objects.equals(existing.getUserId(), command.userId())) {
+        if (!existing.isType(TransactionType.EARN) || !Objects.equals(existing.getUserId(), command.userId())
+                || existing.getAmount() != command.amount()) {
             throw new PointException(ErrorCode.DUPLICATE_REQUEST);
         }
         PointLot lot = lotRepository.findByTransactionId(existing.getId()).orElseThrow();
+        if (lot.getSource() != command.source()
+                || (command.expiresAt() != null && !command.expiresAt().equals(lot.getExpiresAt()))) {
+            throw new PointException(ErrorCode.DUPLICATE_REQUEST);
+        }
         return EarnResult.of(existing, lot);
     }
 

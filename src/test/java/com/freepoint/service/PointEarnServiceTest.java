@@ -171,6 +171,48 @@ class PointEarnServiceTest extends IntegrationTest {
         }
 
         @Test
+        void 기본_만료일로_적립한_요청은_시간이_지난_뒤_재시도해도_기존_결과를_반환한다() {
+            EarnCommand command = new EarnCommand(USER, 1000, null, LotSource.SYSTEM, null, requestId(), null);
+            EarnResult first = earnService.earn(command);
+
+            clock.advance(Duration.ofMinutes(1));
+            EarnResult second = earnService.earn(command);
+
+            assertThat(second.pointKey()).isEqualTo(first.pointKey());
+        }
+
+        @Test
+        void 같은_requestId_로_금액이_다르면_거부한다() {
+            String requestId = requestId();
+            earnService.earn(new EarnCommand(USER, 1000, null, LotSource.SYSTEM, null, requestId, null));
+
+            assertThatThrownBy(() -> earnService.earn(
+                    new EarnCommand(USER, 5000, null, LotSource.SYSTEM, null, requestId, null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
+            assertThat(balance(USER)).isEqualTo(1000);
+        }
+
+        @Test
+        void 같은_requestId_로_수기지급_여부가_다르면_거부한다() {
+            String requestId = requestId();
+            earnService.earn(new EarnCommand(USER, 1000, null, LotSource.SYSTEM, null, requestId, null));
+
+            assertThatThrownBy(() -> earnService.earn(
+                    new EarnCommand(USER, 1000, null, LotSource.MANUAL, "admin01", requestId, null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
+        }
+
+        @Test
+        void 같은_requestId_로_만료일이_다르면_거부한다() {
+            String requestId = requestId();
+            earnService.earn(new EarnCommand(USER, 1000, now().plusDays(10), LotSource.SYSTEM, null, requestId, null));
+
+            assertThatThrownBy(() -> earnService.earn(
+                    new EarnCommand(USER, 1000, now().plusDays(20), LotSource.SYSTEM, null, requestId, null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_REQUEST);
+        }
+
+        @Test
         void 다른_사용자가_같은_requestId_를_쓰면_거부한다() {
             String requestId = requestId();
             earnService.earn(new EarnCommand(USER, 1000, null, LotSource.SYSTEM, null, requestId, null));

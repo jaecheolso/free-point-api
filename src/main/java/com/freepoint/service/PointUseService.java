@@ -107,7 +107,7 @@ public class PointUseService {
 
         Optional<PointTransaction> duplicated = transactionRepository.findByRequestId(command.requestId());
         if (duplicated.isPresent()) {
-            return replayUseCancel(duplicated.get(), use);
+            return replayUseCancel(duplicated.get(), use, command);
         }
 
         if (command.amount() > use.cancelableAmount()) {
@@ -166,7 +166,8 @@ public class PointUseService {
     }
 
     private UseResult replayUse(PointTransaction existing, UseCommand command) {
-        if (!existing.isType(TransactionType.USE) || !Objects.equals(existing.getUserId(), command.userId())) {
+        if (!existing.isType(TransactionType.USE) || !Objects.equals(existing.getUserId(), command.userId())
+                || existing.getAmount() != command.amount() || !existing.getOrderNo().equals(command.orderNo())) {
             throw new PointException(ErrorCode.DUPLICATE_REQUEST);
         }
         List<UsedLot> usedLots = useDetailRepository.findByUseTransactionIdOrderBySeq(existing.getId()).stream()
@@ -177,9 +178,10 @@ public class PointUseService {
                 existing.getAmount(), usedLots);
     }
 
-    private UseCancelResult replayUseCancel(PointTransaction existing, PointTransaction use) {
+    private UseCancelResult replayUseCancel(PointTransaction existing, PointTransaction use, UseCancelCommand command) {
         if (!existing.isType(TransactionType.USE_CANCEL)
-                || !Objects.equals(existing.getRelatedTransactionId(), use.getId())) {
+                || !Objects.equals(existing.getRelatedTransactionId(), use.getId())
+                || existing.getAmount() != command.amount()) {
             throw new PointException(ErrorCode.DUPLICATE_REQUEST);
         }
         List<RestoredLot> restoredLots = useCancelDetailRepository
