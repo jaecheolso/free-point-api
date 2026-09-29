@@ -15,6 +15,10 @@ spring:
     hikari:
       pool-name: point-pool
       maximum-pool-size: 20
+      # 취소 요청은 계정 락 전에 pointKey 로 userId 를 조회한다. MySQL 기본값(REPEATABLE READ)에서는
+      # 이 첫 조회 시점에 스냅샷이 고정돼 락 획득 후에도 앞선 커밋을 보지 못하므로 READ COMMITTED 로 고정한다.
+      # (H2 는 기본값이 READ COMMITTED 라 동작 차이가 없다.)
+      transaction-isolation: TRANSACTION_READ_COMMITTED
 
   sql:
     init:
