@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -102,7 +103,8 @@ public class PointEarnService {
         }
         PointLot lot = lotRepository.findByTransactionId(existing.getId()).orElseThrow();
         if (lot.getSource() != command.source()
-                || (command.expiresAt() != null && !command.expiresAt().equals(lot.getExpiresAt()))) {
+                || (command.expiresAt() != null
+                        && !command.expiresAt().truncatedTo(ChronoUnit.SECONDS).equals(lot.getExpiresAt()))) {
             throw new PointException(ErrorCode.DUPLICATE_REQUEST);
         }
         return EarnResult.of(existing, lot);

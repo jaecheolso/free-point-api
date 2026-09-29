@@ -11,6 +11,7 @@ import com.freepoint.exception.PointException;
 import com.freepoint.repository.PointLotRepository;
 import com.freepoint.repository.PointTransactionRepository;
 import com.freepoint.support.IntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class PointEarnServiceTest extends IntegrationTest {
 
     @Autowired
     PointPolicyService policyService;
+
+    @Autowired
+    EntityManager entityManager;
 
     @Nested
     class 적립 {
@@ -178,6 +182,20 @@ class PointEarnServiceTest extends IntegrationTest {
             clock.advance(Duration.ofMinutes(1));
             EarnResult second = earnService.earn(command);
 
+            assertThat(second.pointKey()).isEqualTo(first.pointKey());
+        }
+
+        @Test
+        void 만료일은_초_단위로_저장되어_DB_에서_다시_읽어도_재시도가_기존_결과를_반환한다() {
+            EarnCommand command = new EarnCommand(USER, 1000, now().plusDays(10).plusNanos(123_456_789),
+                    LotSource.SYSTEM, null, requestId(), null);
+            EarnResult first = earnService.earn(command);
+            entityManager.flush();
+            entityManager.clear();
+
+            EarnResult second = earnService.earn(command);
+
+            assertThat(first.expiresAt()).isEqualTo(now().plusDays(10));
             assertThat(second.pointKey()).isEqualTo(first.pointKey());
         }
 
