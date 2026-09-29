@@ -109,6 +109,15 @@ class PointEarnServiceTest extends IntegrationTest {
         }
 
         @Test
+        void 보유_한도_검사는_금액_합이_long_범위를_넘어도_한도_초과로_거절한다() {
+            policyService.updateGlobalPolicy(Long.MAX_VALUE, Long.MAX_VALUE);
+            earnService.earn(systemEarn(USER, Long.MAX_VALUE, null));
+
+            assertThatThrownBy(() -> earnService.earn(systemEarn(USER, 1, null)))
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.HOLD_LIMIT_EXCEEDED);
+        }
+
+        @Test
         void 만료된_포인트는_보유_한도_계산에서_제외된다() {
             for (int i = 0; i < 10; i++) {
                 earnService.earn(systemEarn(USER, 100_000, now().plusDays(1)));

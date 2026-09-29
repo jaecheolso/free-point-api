@@ -149,6 +149,27 @@ class PointApiTest extends IntegrationTest {
     }
 
     @Test
+    void 컬럼_길이를_넘는_문자열은_400_으로_거절한다() throws Exception {
+        post("/api/points/earn", """
+                {"userId": 1, "amount": 1000, "requestId": "%s"}
+                """.formatted("r".repeat(65)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        post("/api/points/use", """
+                {"userId": 1, "orderNo": "%s", "amount": 1, "requestId": "%s"}
+                """.formatted("O".repeat(51), requestId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        post("/api/admin/points/manual-earn", """
+                {"userId": 1, "amount": 1000, "grantedBy": "%s", "requestId": "%s", "memo": "%s"}
+                """.formatted("a".repeat(51), requestId(), "m".repeat(201)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void 도메인_규칙_위반은_에러코드와_메시지로_응답한다() throws Exception {
         post("/api/points/use", """
                 {"userId": 1, "orderNo": "O-1", "amount": 1, "requestId": "%s"}

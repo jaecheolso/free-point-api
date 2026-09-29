@@ -27,7 +27,8 @@ public record EffectivePolicy(
     }
 
     public void validateHoldLimit(long currentBalance, long earnAmount) {
-        if (currentBalance + earnAmount > maxHoldAmount) {
+        // currentBalance + earnAmount 는 long 범위를 넘을 수 있으므로 뺄셈으로 비교한다.
+        if (earnAmount > maxHoldAmount - currentBalance) {
             throw new PointException(ErrorCode.HOLD_LIMIT_EXCEEDED,
                     "(최대 " + maxHoldAmount + ", 현재 " + currentBalance + ", 요청 " + earnAmount + ")");
         }
