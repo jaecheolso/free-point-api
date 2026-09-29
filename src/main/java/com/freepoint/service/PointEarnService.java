@@ -37,8 +37,8 @@ public class PointEarnService {
     private final Clock clock;
 
     public EarnResult earn(EarnCommand command) {
-        LocalDateTime now = LocalDateTime.now(clock);
         lockAccount(command.userId());
+        LocalDateTime now = LocalDateTime.now(clock);
 
         Optional<PointTransaction> duplicated = transactionRepository.findByRequestId(command.requestId());
         if (duplicated.isPresent()) {
@@ -61,10 +61,10 @@ public class PointEarnService {
     }
 
     public EarnCancelResult cancelEarn(EarnCancelCommand command) {
-        LocalDateTime now = LocalDateTime.now(clock);
         Long userId = transactionRepository.findUserIdByPointKey(command.pointKey())
                 .orElseThrow(() -> new PointException(ErrorCode.TRANSACTION_NOT_FOUND));
         lockAccount(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
 
         // 거래와 Lot 은 락 획득 후 조회해 다른 트랜잭션의 변경이 반영된 최신 상태로 판정한다.
         PointTransaction earn = transactionRepository.findByPointKey(command.pointKey()).orElseThrow();

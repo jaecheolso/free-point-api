@@ -1,16 +1,24 @@
 package com.freepoint.service;
 
 import com.freepoint.domain.LotSource;
+import com.freepoint.domain.RestoreType;
 import com.freepoint.exception.ErrorCode;
+import com.freepoint.repository.PointAccountRepository;
 import com.freepoint.support.ConcurrencyTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,6 +44,12 @@ class PointConcurrencyTest extends ConcurrencyTest {
 
     @Autowired
     JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    PointAccountRepository accountRepository;
+
+    @Autowired
+    TransactionTemplate transactionTemplate;
 
     @Test
     void 동시에_사용해도_잔액을_초과해_사용되지_않는다() throws InterruptedException {
@@ -128,6 +142,65 @@ class PointConcurrencyTest extends ConcurrencyTest {
         assertThat(outcome.failures()).isEmpty();
         assertThat(count("SELECT COUNT(*) FROM point_user_policy WHERE user_id = ? AND effective_to IS NULL", USER))
                 .isEqualTo(1);
+    }
+
+    @Test
+    void 락을_기다리는_동안_만료된_Lot_은_사용취소_시_신규_적립된다() throws Exception {
+        earnService.earn(new EarnCommand(USER, 1_000, now().plusDays(1), LotSource.SYSTEM, null, requestId(), null));
+        String useKey = useService.use(new UseCommand(USER, "O-1", 1_000, requestId(), null)).pointKey();
+
+        UseCancelResult result = whileAccountLocked(
+                () -> useService.cancelUse(new UseCancelCommand(useKey, 1_000, requestId(), null)),
+                () -> clock.advance(Duration.ofDays(1)));
+
+        assertThat(result.restoredLots()).extracting(RestoredLot::restoreType).containsExactly(RestoreType.REISSUED);
+        assertThat(queryService.getBalance(USER)).isEqualTo(1_000);
+    }
+
+    @Test
+    void 먼저_시각을_읽은_요청이_나중에_락을_얻어도_적용_중인_개인_정책은_하나다() throws Exception {
+        whileAccountLocked(
+                () -> policyService.updateUserMaxHold(USER, 3_000),
+                () -> {
+                    clock.advance(Duration.ofMinutes(1));
+                    policyService.updateUserMaxHold(USER, 5_000);
+                });
+
+        assertThat(count("SELECT COUNT(*) FROM point_user_policy WHERE user_id = ? AND effective_to IS NULL", USER))
+                .isEqualTo(1);
+        assertThat(policyService.getUserPolicy(USER).maxHoldAmount()).isEqualTo(3_000);
+    }
+
+    /**
+     * 계정 락을 먼저 잡은 트랜잭션 안에서 target 을 출발시켜 락을 기다리게 한 뒤,
+     * whileWaiting 을 같은 트랜잭션에서 실행하고 커밋해 target 을 이어서 진행시킨다.
+     */
+    private <T> T whileAccountLocked(Supplier<T> target, Runnable whileWaiting) throws Exception {
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CompletableFuture<Void> holder = CompletableFuture.runAsync(() -> transactionTemplate.executeWithoutResult(status -> {
+            accountRepository.findByIdForUpdate(USER).orElseThrow();
+            locked.countDown();
+            await(release);
+            whileWaiting.run();
+        }));
+        locked.await();
+
+        CompletableFuture<T> result = CompletableFuture.supplyAsync(target);
+        Thread.sleep(300); // target 이 계정 락 대기에 들어갈 시간
+        release.countDown();
+
+        holder.get(10, TimeUnit.SECONDS);
+        return result.get(10, TimeUnit.SECONDS);
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     private String earn(long amount) {

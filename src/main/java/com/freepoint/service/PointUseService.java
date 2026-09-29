@@ -52,8 +52,8 @@ public class PointUseService {
         if (command.orderNo() == null || command.orderNo().isBlank()) {
             throw new PointException(ErrorCode.ORDER_NO_REQUIRED);
         }
-        LocalDateTime now = LocalDateTime.now(clock);
         lockAccount(command.userId());
+        LocalDateTime now = LocalDateTime.now(clock);
 
         Optional<PointTransaction> duplicated = transactionRepository.findByRequestId(command.requestId());
         if (duplicated.isPresent()) {
@@ -95,10 +95,10 @@ public class PointUseService {
         if (command.amount() <= 0) {
             throw new PointException(ErrorCode.INVALID_CANCEL_AMOUNT);
         }
-        LocalDateTime now = LocalDateTime.now(clock);
         Long userId = transactionRepository.findUserIdByPointKey(command.pointKey())
                 .orElseThrow(() -> new PointException(ErrorCode.TRANSACTION_NOT_FOUND));
         lockAccount(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
 
         PointTransaction use = transactionRepository.findByPointKey(command.pointKey()).orElseThrow();
         if (!use.isType(TransactionType.USE)) {

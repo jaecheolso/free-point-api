@@ -70,8 +70,8 @@ public class PointPolicyService {
      */
     @Transactional
     public UserPolicyResult updateUserMaxHold(Long userId, long maxHoldAmount) {
-        LocalDateTime now = LocalDateTime.now(clock);
         lockAccount(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
         PointUserPolicy next = PointUserPolicy.create(userId, maxHoldAmount, now);
         userPolicyRepository.findEffectiveUserPolicy(userId, now).ifPresent(current -> current.close(now));
         return UserPolicyResult.personal(userPolicyRepository.save(next));
@@ -79,8 +79,8 @@ public class PointPolicyService {
 
     @Transactional
     public void removeUserPolicy(Long userId) {
-        LocalDateTime now = LocalDateTime.now(clock);
         lockAccount(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
         PointUserPolicy current = userPolicyRepository.findEffectiveUserPolicy(userId, now)
                 .orElseThrow(() -> new PointException(ErrorCode.USER_POLICY_NOT_FOUND));
         current.close(now);
