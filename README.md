@@ -59,4 +59,5 @@
 ./gradlew bootRun   # 실행 (http://localhost:8080)
 ```
 - Swagger UI: http://localhost:8080/swagger-ui.html
+- 테스트 계정: `userId` 1~5 (`data.sql`로 생성). 계정 생성 API는 없으며, 운영에서는 회원 가입 시 생성된다고 가정한다.
 - H2 콘솔: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:point` / User `sa` / Password 없음)
